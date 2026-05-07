@@ -1,0 +1,7 @@
+<mat-toolbar color="primary">
+  <span class="app-name">{{ appName }}</span>
+  @if (routeTitle()) {
+    <span class="route-separator"> — </span>
+    <span class="route-title">{{ routeTitle() }}</span>
+  }
+</mat-toolbar>

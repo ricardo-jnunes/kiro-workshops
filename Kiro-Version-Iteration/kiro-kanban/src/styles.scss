@@ -1,0 +1,38 @@
+// Angular Material v21 — M3 theming API
+@use '@angular/material' as mat;
+
+// Definição do tema M3
+$kiro-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$violet-palette,
+    tertiary: mat.$rose-palette,
+  ),
+  typography: (
+    brand-family: 'Roboto, Helvetica Neue, sans-serif',
+  ),
+  density: (
+    scale: 0,
+  ),
+));
+
+// Aplicação do tema no root
+html {
+  @include mat.all-component-themes($kiro-theme);
+  @include mat.core();
+}
+
+// Resets globais
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}

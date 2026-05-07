@@ -1,0 +1,12 @@
+<mat-nav-list>
+  @for (item of navItems; track item.route) {
+    <a
+      mat-list-item
+      [routerLink]="item.route"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: false }"
+    >
+      {{ item.label }}
+    </a>
+  }
+</mat-nav-list>
