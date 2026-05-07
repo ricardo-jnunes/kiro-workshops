@@ -16,4 +16,3 @@ O objetivo do workshop é demonstrar na prática como o Kiro auxilia em todas as
 Link: [Kiro Kanban Workshop](/Kiro-Version-Iteration/README.md)
 
 ---
-
