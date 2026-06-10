@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "viacep": {
+      "command": "node",
+      "args": ["./build/index.js"],
+      "disabled": false,
+      "autoApprove": ["getAddressByCEP", "getCEPByAddress"]
+    }
+  }
+}
