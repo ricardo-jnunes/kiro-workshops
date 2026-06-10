@@ -6,10 +6,10 @@ Repositório com prompts e material de estudo para uso do **Kiro IDE** — AI-po
 
 ## Workshops Disponíveis
 
-| Workshop | Descrição | Status |
-|---|---|---|
-| [Kiro Kanban](#kiro-kanban-workshop) | SPA Angular com Kanban board seguindo Spec-Driven Development iterativo | 🚧 Em andamento |
-| [Kiro MCP ViaCEP](#kiro-mcp-viacep-workshop) | Servidor MCP para consulta de CEPs brasileiros via API ViaCEP | ✅ Disponível |
+| Workshop | Descrição |
+|---|---|
+| [Kiro Kanban](#kiro-kanban-workshop) | SPA Angular com Kanban board seguindo Spec-Driven Development iterativo |
+| [Kiro MCP ViaCEP](#kiro-mcp-viacep-workshop) | Servidor MCP para consulta de CEPs brasileiros via API ViaCEP |
 
 ---
 
