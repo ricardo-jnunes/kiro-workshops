@@ -1,6 +1,43 @@
 # Sprint 0 — Environment Setup Checklist
 
-Complete all items below before starting Sprint 1. Each section includes the verification command and the install guide link.
+Complete all items below before starting Sprint 1.
+
+---
+
+## Development Workflow
+
+Daily development **does not use Docker**. Each service runs directly as a local process:
+
+```bash
+# Terminal 1 — Backend (port 8080)
+cd backend
+export COGNITO_ISSUER_URI=https://cognito-idp.<region>.amazonaws.com/<UserPoolId>
+export CORS_ALLOWED_ORIGINS=http://localhost:5173
+./gradlew bootRun
+
+# Terminal 2 — Frontend (port 5173)
+cd frontend
+# .env.local with VITE_COGNITO_* and VITE_API_BASE_URL=http://localhost:8080
+npm run dev
+```
+
+Docker image builds and deployments happen **exclusively in the AWS pipeline** (CodePipeline + CodeBuild), triggered automatically on GitHub push. No image build or deploy step is ever run locally.
+
+---
+
+## Deploy Pipeline (AWS CodePipeline + CodeBuild)
+
+```
+Push to GitHub (main)
+    ↓
+CodePipeline (CodeStar Connection → GitHub)
+    ├── CodeBuild: backend
+    │     └── docker build + push to ECR → App Runner redeploys
+    └── CodeBuild: frontend
+          └── npm run build + aws s3 sync + CloudFront invalidation
+```
+
+The pipeline is provisioned in Sprint 1 via CDK.
 
 ---
 
@@ -12,32 +49,16 @@ Complete all items below before starting Sprint 1. Each section includes the ver
 **Verify:**
 ```bash
 java --version
-# Expected: openjdk 21.x.x or similar
+# Expected: openjdk 21.x.x
 ```
 
-**Install:** [Eclipse Temurin 21](https://adoptium.net/temurin/releases/?version=21) (recommended) or your preferred JDK distribution.
+**Install:** [Eclipse Temurin 21](https://adoptium.net/temurin/releases/?version=21) (recommended).
+
+> **Windows:** ensure `JAVA_HOME` is set in system environment variables and `%JAVA_HOME%\bin` is on the `PATH`.
 
 ---
 
-## 2. Docker
-
-- [ ] Docker Engine installed and running
-- [ ] Docker Compose v2 available (`docker compose` — note: no hyphen)
-
-**Verify:**
-```bash
-docker --version
-# Expected: Docker version 24.x.x or higher
-
-docker compose version
-# Expected: Docker Compose version v2.x.x
-```
-
-**Install:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux).
-
----
-
-## 3. Node.js 20+
+## 2. Node.js 20+
 
 - [ ] Node.js 20 or higher installed
 - [ ] npm available
@@ -50,14 +71,14 @@ node --version
 npm --version
 ```
 
-**Install:** [Node.js LTS](https://nodejs.org/en/download) or via [nvm](https://github.com/nvm-sh/nvm).
+**Install:** [Node.js LTS](https://nodejs.org/en/download) or via [nvm-windows](https://github.com/coreybutler/nvm-windows).
 
 ---
 
-## 4. AWS CLI v2
+## 3. AWS CLI v2
 
 - [ ] AWS CLI v2 installed
-- [ ] AWS credentials configured (access key + secret, or SSO profile)
+- [ ] AWS credentials configured
 - [ ] Default region set
 
 **Verify:**
@@ -66,22 +87,20 @@ aws --version
 # Expected: aws-cli/2.x.x
 
 aws sts get-caller-identity
-# Expected: JSON with UserId, Account, Arn — confirms credentials work
+# Expected: JSON with UserId, Account, Arn
 ```
 
-**Install:** [AWS CLI v2 install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+**Install:** [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
-**Configure credentials:**
+**Configure:**
 ```bash
 aws configure
-# Prompts for: AWS Access Key ID, Secret Access Key, Region, Output format
+# Prompts for: Access Key ID, Secret Access Key, Region, Output format
 ```
-
-> Tip: use `sa-east-1` (São Paulo) or `us-east-1` (N. Virginia) as your default region. All sprint commands will use `CDK_DEFAULT_REGION` from this config.
 
 ---
 
-## 5. AWS CDK v2
+## 4. AWS CDK v2
 
 - [ ] AWS CDK v2 installed globally
 
@@ -98,63 +117,73 @@ npm install -g aws-cdk
 
 ---
 
-## 6. Gradle (optional — via wrapper)
+## 5. Gradle (via wrapper — no global install needed)
 
-- [ ] The backend uses the Gradle wrapper (`./gradlew`), so no global install is required
-- [ ] Confirm the wrapper script is executable (Linux/Mac only)
+- [ ] No installation required — the backend uses the Gradle Wrapper
 
-**Verify (after cloning):**
+**Verify after cloning:**
 ```bash
 cd backend
-./gradlew --version
+.\gradlew.bat --version   # Windows (PowerShell)
+./gradlew --version       # Linux/Mac
 # Expected: Gradle 8.x
 ```
 
-> On Windows (PowerShell): use `./gradlew.bat --version`
+---
+
+## 6. Git + GitHub
+
+- [ ] Git installed
+- [ ] Repository created on GitHub
+- [ ] Access to configure a CodeStar Connection (AWS → GitHub)
+
+**Verify:**
+```bash
+git --version
+```
+
+> CodePipeline uses **AWS CodeStar Connections** to authenticate with GitHub. The connection is created once in the AWS console during the Sprint 1 setup.
 
 ---
 
-## 7. AWS Account Readiness
+## 7. AWS Account — Permissions and Bootstrap
 
-- [ ] You have an AWS account with permissions to create: Cognito, ECR, App Runner, S3, CloudFront, IAM roles
-- [ ] CDK bootstrap has been run (or is ready to run) in the target account/region
+- [ ] AWS account with permissions to create: Cognito, ECR, App Runner, S3, CloudFront, CodePipeline, CodeBuild, CodeStar Connections, IAM roles
+- [ ] CDK bootstrap run (or ready to run) in the target account and region
 
 **Bootstrap (run once per account/region):**
 ```bash
 cd infra
 npx cdk bootstrap aws://<ACCOUNT_ID>/<REGION>
-# Example: npx cdk bootstrap aws://123456789012/us-east-1
 ```
 
-> You can get your account ID with: `aws sts get-caller-identity --query Account --output text`
+> Get your Account ID: `aws sts get-caller-identity --query Account --output text`
 
 ---
 
-## 8. Decide on AWS Region
+## 8. Choose Your AWS Region
 
-- [ ] Choose and note down your AWS region for all sprints
-
-Suggested options:
+- [ ] Region decided and noted for use across all sprints
 
 | Region | Name | Notes |
 |--------|------|-------|
-| `us-east-1` | N. Virginia | Most services available, lowest latency for global APIs |
-| `sa-east-1` | São Paulo | Best latency for Brazil-based users |
-| `us-west-2` | Oregon | Common default for many AWS examples |
+| `us-east-1` | N. Virginia | Widest service availability |
+| `sa-east-1` | São Paulo | Lowest latency for Brazil-based users |
+| `us-west-2` | Oregon | Common default in AWS examples |
 
-Set it as your CLI default or export before running CDK commands:
 ```bash
-export AWS_DEFAULT_REGION=us-east-1
-# or: aws configure set region us-east-1
+aws configure set region us-east-1
 ```
+
+My region: **`___________________`**
 
 ---
 
-## 9. Java Package Name Decision
+## 9. Java Package Name
 
-- [ ] Decide on the Java root package for the backend
+- [ ] Java root package decided for the backend
 
-The spec uses `com.example.poc` as placeholder. Replace with your preferred namespace before Sprint 2:
+The spec uses `com.example.poc` as a placeholder. Decide before starting Sprint 2:
 
 | Option | Example |
 |--------|---------|
@@ -162,20 +191,20 @@ The spec uses `com.example.poc` as placeholder. Replace with your preferred name
 | Company-based | `com.yourcompany.poc` |
 | GitHub-based | `io.github.yourusername.poc` |
 
-Note your choice here: **`___________________`**
+My choice: **`___________________`**
 
 ---
 
 ## 10. App Runner First-Deploy Strategy
 
-- [ ] Decide how to handle the initial ECR image requirement for App Runner
+- [ ] Strategy decided for the initial ECR image
 
-App Runner needs an image in ECR before the CDK stack is fully operational. Choose one:
+App Runner needs an image in ECR before it can be provisioned by CDK. Choose one:
 
-- **Option A — Placeholder image (recommended for POC):** CDK creates the ECR repo and App Runner service pointing to a public placeholder image (`public.ecr.aws/amazonlinux/amazonlinux:latest`). Sprint 2 `deploy.sh` then replaces it with the real image.
-- **Option B — Sequential deploy:** Run `npx cdk deploy` with only the Cognito + S3 + CloudFront stacks first, then build and push the backend image, then deploy the App Runner portion.
+- **Option A — Placeholder image (recommended):** CDK creates the App Runner service pointing to `public.ecr.aws/amazonlinux/amazonlinux:latest`. The first GitHub push triggers the pipeline, which replaces it with the real image.
+- **Option B — Sequential deploy:** CDK provisions Cognito + S3 + CloudFront + pipeline first. The first pipeline run pushes the real image. Then run `cdk deploy` again to create the App Runner service.
 
-Note your choice here: **`___________________`**
+My choice: **`___________________`**
 
 ---
 

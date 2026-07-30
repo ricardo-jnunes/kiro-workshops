@@ -2,7 +2,9 @@
 
 ## Overview
 
-A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hexagonal architecture (ports and adapters) to decouple business logic from infrastructure concerns. Validates AWS Cognito JWTs for protected endpoints and exposes a health check. Deployed to **AWS App Runner** via a container image pushed to ECR.
+A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hexagonal architecture (ports and adapters). Deployed to **AWS App Runner** via ECR — the Docker build and push happen exclusively in the **CodeBuild pipeline** (Sprint 4), never locally.
+
+**Local development:** `./gradlew bootRun` — no Docker required.
 
 ---
 
@@ -14,8 +16,8 @@ A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hex
 
 1. WHEN `GET /actuator/health` is called THEN the system SHALL return HTTP 200 with JSON body `{"status":"UP"}`.
 2. WHEN the application starts THEN the system SHALL NOT require authentication to access `/actuator/health`.
-3. WHEN the Gradle build runs via `./gradlew build` THEN the system SHALL produce an executable fat JAR.
-4. WHEN the application starts via `./gradlew bootRun` THEN the system SHALL be accessible on port 8080.
+3. WHEN `./gradlew build` runs THEN the system SHALL produce an executable fat JAR in `build/libs/`.
+4. WHEN `./gradlew bootRun` runs THEN the system SHALL be accessible on port 8080.
 
 ---
 
@@ -47,56 +49,50 @@ A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hex
 
 ## Requirement 6 — Hexagonal Architecture (Ports and Adapters)
 
-**User Story:** As a developer, I want the backend structured with hexagonal architecture, so that business logic is fully decoupled from infrastructure and framework concerns, making the codebase easier to test and extend.
+**User Story:** As a developer, I want the backend structured with hexagonal architecture, so that business logic is fully decoupled from infrastructure and framework concerns.
 
 #### Acceptance Criteria
 
 1. THE source code SHALL be organized into three layers:
    - `domain/` — pure business logic: domain models and port interfaces (no Spring, no framework imports).
-   - `application/` — use case classes that orchestrate domain logic by depending only on port interfaces.
-   - `infrastructure/` — adapters that implement port interfaces: REST controllers, Spring Security config, and any external service clients.
-2. WHEN a use case class is instantiated in a unit test THEN the system SHALL be testable without loading the Spring application context, by injecting mock implementations of the port interfaces.
-3. THE `domain/` package SHALL NOT contain any import from `org.springframework`, `jakarta.servlet`, or any other framework package.
-4. WHEN a new external dependency (database, messaging, third-party API) is introduced THEN the system SHALL define it as a port interface in `domain/ports/` and implement it as an adapter in `infrastructure/`.
-5. THE `GET /api/me` feature SHALL be implemented as:
-   - A `GetCurrentUserUseCase` class in `application/` that depends on a `UserIdentityPort` interface in `domain/ports/`.
-   - A `CognitoUserIdentityAdapter` in `infrastructure/` that implements `UserIdentityPort` by extracting claims from the Spring Security JWT context.
-   - A `MeController` in `infrastructure/web/` that delegates to `GetCurrentUserUseCase`.
-6. WHEN the Gradle project is structured THEN the package root SHALL be `com.example.poc` with sub-packages `domain`, `application`, and `infrastructure` directly beneath it.
+   - `application/` — use case classes depending only on port interfaces.
+   - `infrastructure/` — adapters: REST controllers, Spring Security config, Cognito adapter.
+2. WHEN a use case class is instantiated in a unit test THEN the system SHALL be testable without loading the Spring application context.
+3. THE `domain/` package SHALL NOT contain any import from `org.springframework` or `jakarta.servlet`.
+4. THE `GET /api/me` feature SHALL be implemented as:
+   - `GetCurrentUserUseCase` in `application/`
+   - `UserIdentityPort` interface in `domain/ports/`
+   - `CognitoUserIdentityAdapter` in `infrastructure/`
+   - `MeController` in `infrastructure/web/`
+5. WHEN the Gradle project is structured THEN the package root SHALL be `com.example.poc` with sub-packages `domain`, `application`, and `infrastructure`.
 
 ---
 
-## Requirement 7 — Container Image and App Runner Deployment
+## Requirement 7 — Dockerfile (pipeline use only)
 
-**User Story:** As a developer, I want the backend packaged as a container image and deployable to AWS App Runner via ECR, so that I can ship a production-ready service without managing infrastructure.
+**User Story:** As a developer, I want a Dockerfile in the backend that is used exclusively by the CodeBuild pipeline, so that the production image is built in AWS without any local Docker requirement.
 
 #### Acceptance Criteria
 
-1. THE `backend/Dockerfile` SHALL use a multi-stage build:
-   - Stage `builder`: `eclipse-temurin:21-jdk-alpine` — runs `./gradlew build -x test` and produces the fat JAR.
-   - Stage `runtime`: `eclipse-temurin:21-jre-alpine` — copies the JAR and sets the entrypoint.
+1. THE `backend/Dockerfile` SHALL copy the fat JAR from `build/libs/` (already produced by `./gradlew build` in the CodeBuild step) and run it using `eclipse-temurin:21-jre-alpine` as the base image.
 2. WHEN the container image is built THEN the system SHALL expose port 8080.
-3. WHEN the container image is pushed to ECR and the App Runner service is updated THEN the service SHALL become healthy within 5 minutes, verified by `GET /actuator/health` returning HTTP 200.
-4. WHEN the App Runner service is running THEN the system SHALL read `COGNITO_ISSUER_URI` and `CORS_ALLOWED_ORIGINS` from the App Runner environment variable configuration (provisioned in Sprint 1).
-5. THE `backend/` directory SHALL include a `deploy.sh` script (or equivalent Makefile target) with the commands to build, tag, push the image to ECR, and trigger an App Runner redeployment.
+3. WHEN the container image is pushed to ECR by the pipeline THEN the App Runner service SHALL become healthy within 5 minutes.
+4. THE `backend/Dockerfile` SHALL NOT be required for local development — `./gradlew bootRun` is the local workflow.
 
 ---
 
-## Running Sprint 2 in Isolation
+## Local Development (No Docker)
 
 ```bash
 cd backend
-# Requires Sprint 1 outputs
 export COGNITO_ISSUER_URI=https://cognito-idp.<region>.amazonaws.com/<UserPoolId>
 export CORS_ALLOWED_ORIGINS=http://localhost:5173
 
-./gradlew bootRun     # start server on :8080
-./gradlew test        # run unit and integration tests
-./gradlew build       # produce executable JAR
+./gradlew bootRun   # starts on :8080
+./gradlew test      # run unit + integration tests
+./gradlew build     # produce JAR (used by the pipeline)
 
-# Verify health check
 curl http://localhost:8080/actuator/health
-
-# Deploy to App Runner (requires Sprint 1 deployed and AWS credentials)
-# ./deploy.sh <ecr-repo-uri> <apprunner-service-arn>
 ```
+
+> Deployment happens automatically via CodePipeline on every push to GitHub (configured in Sprint 1).
