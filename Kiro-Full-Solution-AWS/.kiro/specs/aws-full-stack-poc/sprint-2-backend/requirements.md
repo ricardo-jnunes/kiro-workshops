@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hexagonal architecture (ports and adapters) to decouple business logic from infrastructure concerns. Validates AWS Cognito JWTs for protected endpoints and exposes a health check. Independently runnable after Sprint 1 outputs are available.
+A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hexagonal architecture (ports and adapters) to decouple business logic from infrastructure concerns. Validates AWS Cognito JWTs for protected endpoints and exposes a health check. Deployed to **AWS App Runner** via a container image pushed to ECR.
 
 ---
 
@@ -66,6 +66,22 @@ A Java 21 / Spring Boot 3.x REST API built with Gradle (Kotlin DSL). Follows hex
 
 ---
 
+## Requirement 7 — Container Image and App Runner Deployment
+
+**User Story:** As a developer, I want the backend packaged as a container image and deployable to AWS App Runner via ECR, so that I can ship a production-ready service without managing infrastructure.
+
+#### Acceptance Criteria
+
+1. THE `backend/Dockerfile` SHALL use a multi-stage build:
+   - Stage `builder`: `eclipse-temurin:21-jdk-alpine` — runs `./gradlew build -x test` and produces the fat JAR.
+   - Stage `runtime`: `eclipse-temurin:21-jre-alpine` — copies the JAR and sets the entrypoint.
+2. WHEN the container image is built THEN the system SHALL expose port 8080.
+3. WHEN the container image is pushed to ECR and the App Runner service is updated THEN the service SHALL become healthy within 5 minutes, verified by `GET /actuator/health` returning HTTP 200.
+4. WHEN the App Runner service is running THEN the system SHALL read `COGNITO_ISSUER_URI` and `CORS_ALLOWED_ORIGINS` from the App Runner environment variable configuration (provisioned in Sprint 1).
+5. THE `backend/` directory SHALL include a `deploy.sh` script (or equivalent Makefile target) with the commands to build, tag, push the image to ECR, and trigger an App Runner redeployment.
+
+---
+
 ## Running Sprint 2 in Isolation
 
 ```bash
@@ -80,4 +96,7 @@ export CORS_ALLOWED_ORIGINS=http://localhost:5173
 
 # Verify health check
 curl http://localhost:8080/actuator/health
+
+# Deploy to App Runner (requires Sprint 1 deployed and AWS credentials)
+# ./deploy.sh <ecr-repo-uri> <apprunner-service-arn>
 ```

@@ -2,7 +2,7 @@
 
 ## Overview
 
-A minimal React SPA built with Vite and TypeScript. Uses AWS Amplify v6 for Cognito authentication. Styled exclusively with CSS Modules — no UI library dependencies. Independently runnable after Sprint 1 outputs are available.
+A minimal React SPA built with Vite and TypeScript. Uses AWS Amplify v6 for Cognito authentication. Styled exclusively with CSS Modules — no UI library dependencies. Deployed to **AWS S3 + CloudFront** as a static bundle.
 
 ---
 
@@ -41,8 +41,22 @@ A minimal React SPA built with Vite and TypeScript. Uses AWS Amplify v6 for Cogn
 
 1. WHEN any component is created THEN the system SHALL use CSS Modules (`.module.css`) for all component-level styling.
 2. WHEN the application dependencies are installed THEN the system SHALL NOT include any third-party UI component library (no MUI, Ant Design, Chakra, etc.).
-3. WHEN the application is built via `npm run build` THEN the system SHALL produce a production-ready static bundle.
+3. WHEN the application is built via `npm run build` THEN the system SHALL produce a production-ready static bundle in the `dist/` directory.
 4. WHEN running in development via `npm run dev` THEN the system SHALL start on port 5173.
+
+---
+
+## Requirement 9 — Static Bundle Deployment to S3 + CloudFront
+
+**User Story:** As a developer, I want the production build deployed to S3 and served via CloudFront, so that the frontend is available globally over HTTPS without managing servers.
+
+#### Acceptance Criteria
+
+1. WHEN `npm run build` produces the `dist/` bundle THEN the system SHALL be deployable to the S3 bucket provisioned in Sprint 1 using `aws s3 sync dist/ s3://<FrontendBucketName> --delete`.
+2. WHEN the S3 sync completes THEN the system SHALL invalidate the CloudFront cache using `aws cloudfront create-invalidation --distribution-id <id> --paths "/*"` so updated files are served immediately.
+3. WHEN the frontend is built for production THEN the system SHALL inject `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_COGNITO_DOMAIN`, and `VITE_API_BASE_URL` as build-time environment variables (set to the App Runner service URL from Sprint 1 output `BackendUrl`).
+4. THE `frontend/` directory SHALL include a `deploy.sh` script (or equivalent Makefile target) with the commands to build, sync to S3, and invalidate CloudFront.
+5. WHEN the CloudFront distribution serves the app and a user navigates directly to a sub-route (e.g. `/login`) THEN the system SHALL return `index.html` with HTTP 200, not a 403 or 404 (handled by CloudFront error pages configured in Sprint 1).
 
 ---
 
@@ -52,12 +66,16 @@ A minimal React SPA built with Vite and TypeScript. Uses AWS Amplify v6 for Cogn
 cd frontend
 cp .env.example .env.local
 # Edit .env.local with Sprint 1 outputs:
-# VITE_COGNITO_USER_POOL_ID=<value>
-# VITE_COGNITO_CLIENT_ID=<value>
-# VITE_API_BASE_URL=http://localhost:8080
+# VITE_COGNITO_USER_POOL_ID=<UserPoolId>
+# VITE_COGNITO_CLIENT_ID=<UserPoolClientId>
+# VITE_COGNITO_DOMAIN=<CognitoDomain>
+# VITE_API_BASE_URL=http://localhost:8080  # or App Runner BackendUrl
 
 npm install
 npm run dev       # dev server on :5173
-npm run build     # production build
+npm run build     # production build → dist/
 npm test          # Vitest unit tests
+
+# Deploy to S3 + CloudFront (requires Sprint 1 deployed and AWS credentials)
+# ./deploy.sh <bucket-name> <cloudfront-distribution-id>
 ```

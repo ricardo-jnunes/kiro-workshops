@@ -17,70 +17,69 @@ Quero criar uma POC completa que sirva como template de ponto de partida para pr
 **Sprint 1 — IaC com AWS CDK (pasta `infra/`)**
 
 - Usar AWS CDK com TypeScript
-- Provisionar um Cognito User Pool com:
-  - Sign-in por email
-  - Self-registration habilitado (sem aprovação de admin)
-  - Password policy: mínimo 8 caracteres, pelo menos uma maiúscula, uma minúscula e um dígito
-- Criar um User Pool App Client sem client secret, com auth flows `ALLOW_USER_SRP_AUTH` e `ALLOW_REFRESH_TOKEN_AUTH`
-- Exportar como stack outputs: `UserPoolId`, `UserPoolClientId` e `CognitoDomain`
+- Provisionar um Cognito User Pool com sign-in por email, self-registration habilitado e password policy: mínimo 8 caracteres, maiúscula, minúscula e dígito
+- Criar um User Pool App Client sem client secret, com flows `ALLOW_USER_SRP_AUTH` e `ALLOW_REFRESH_TOKEN_AUTH`
+- Provisionar um repositório ECR privado chamado `aws-full-stack-poc-backend` para armazenar a imagem do backend
+- Provisionar um serviço AWS App Runner apontando para o repositório ECR, com:
+  - Health check configurado para `GET /actuator/health`
+  - Variáveis de ambiente `COGNITO_ISSUER_URI` e `CORS_ALLOWED_ORIGINS` injetadas no container
+  - Auto-scaling: mínimo 1 instância, máximo 3
+  - IAM role com permissão para pull de imagens do ECR
+- Provisionar um bucket S3 privado (acesso público bloqueado) para hospedar o bundle estático do frontend
+- Provisionar uma distribuição CloudFront com:
+  - Origin Access Control (OAC) apontando para o bucket S3
+  - Objeto raiz padrão: `index.html`
+  - Páginas de erro 403 e 404 redirecionando para `index.html` com HTTP 200 (para suporte ao React Router)
+- Exportar como stack outputs: `UserPoolId`, `UserPoolClientId`, `CognitoDomain`, `BackendUrl`, `FrontendUrl`, `FrontendBucketName`
 - Taguear todos os recursos com `Project: aws-full-stack-poc` e `Environment: dev`
-- O stack deve ser destruível com `npx cdk destroy` sem intervenção manual
-- Incluir testes com CDK Assertions e um `README.md` dentro de `infra/` com os passos de bootstrap e deploy
+- Incluir testes com CDK Assertions e `README.md` dentro de `infra/` com passos de bootstrap e deploy
 
 **Sprint 2 — Backend Java (pasta `backend/`)**
 
 - Java 21 + Spring Boot 3.x + Gradle com Kotlin DSL
 - Estrutura obrigatória em arquitetura hexagonal (ports and adapters):
-  - `com.example.poc.domain` — modelos de domínio e interfaces de porta; sem nenhum import de framework (Spring, Jakarta, etc.)
-  - `com.example.poc.application` — use cases que dependem apenas das interfaces de porta
-  - `com.example.poc.infrastructure` — adapters Spring: controllers REST, configuração de segurança, adapter Cognito
-- O endpoint `GET /api/me` deve ser implementado com:
-  - `GetCurrentUserUseCase` em `application/`
-  - Interface `UserIdentityPort` em `domain/ports/`
-  - `CognitoUserIdentityAdapter` implementando a porta em `infrastructure/`
-  - `MeController` delegando ao use case em `infrastructure/web/`
-- Endpoints:
-  - `GET /actuator/health` — público, retorna `{"status":"UP"}`
-  - `GET /api/me` — protegido, retorna `sub` e `email` do JWT Cognito
-- Retornar HTTP 401 para requisições sem token, com token expirado ou com token inválido
-- Validação JWT automática via JWKS usando `spring-security-oauth2-resource-server`
-- CORS configurável via variável `CORS_ALLOWED_ORIGINS` (default: `http://localhost:5173`)
+  - `com.example.poc.domain` — modelos e interfaces de porta; sem nenhum import de framework
+  - `com.example.poc.application` — use cases dependendo apenas das interfaces de porta
+  - `com.example.poc.infrastructure` — adapters Spring: controllers REST, security config, adapter Cognito
+- O endpoint `GET /api/me` implementado com: `GetCurrentUserUseCase` (application), `UserIdentityPort` (domain/ports), `CognitoUserIdentityAdapter` (infrastructure), `MeController` (infrastructure/web)
+- Endpoints: `GET /actuator/health` (público) e `GET /api/me` (protegido, retorna `sub` e `email`)
+- HTTP 401 para requisições sem token, com token expirado ou inválido
+- Validação JWT automática via JWKS com `spring-security-oauth2-resource-server`
+- CORS configurável via `CORS_ALLOWED_ORIGINS` (default: `http://localhost:5173`)
 - Variável de ambiente necessária: `COGNITO_ISSUER_URI`
+- Dockerfile multi-stage: `eclipse-temurin:21-jdk-alpine` (build) → `eclipse-temurin:21-jre-alpine` (runtime)
+- Script `deploy.sh` para build, tag, push da imagem para o ECR e trigger de redeployment no App Runner
+- O serviço deve se tornar healthy em até 5 minutos após o deploy
 
 **Sprint 3 — Frontend React (pasta `frontend/`)**
 
 - Vite + React + TypeScript
 - AWS Amplify v6 para autenticação com Cognito — sem Hosted UI, direto via SDK
 - Token Cognito armazenado apenas em memória (nunca em `localStorage` ou `sessionStorage`)
-- Estilização exclusivamente via CSS Modules (`.module.css`) — zero dependências de bibliotecas de UI (sem MUI, Ant Design, Chakra, Bootstrap, etc.)
-- Rotas:
-  - `/login` — página de login com campos email e senha; exibe erro abaixo do botão sem limpar o campo email em caso de falha
-  - `/` — home page protegida com o email do usuário autenticado e botão de logout
-- Route guard: redirecionar usuário não autenticado para `/login` ao tentar acessar qualquer rota protegida
-- Home page deve chamar `GET /api/me` com o JWT como Bearer token e exibir `sub` e `email`
-- Variáveis de ambiente: `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_API_BASE_URL`
+- Estilização exclusivamente via CSS Modules — zero dependências de bibliotecas de UI
+- Rotas: `/login` (login page) e `/` (home page protegida com route guard)
+- Home page chama `GET /api/me` com o JWT como Bearer token e exibe `sub` e `email`
+- Variáveis de ambiente: `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_COGNITO_DOMAIN`, `VITE_API_BASE_URL` (= App Runner `BackendUrl`)
 - Dev server na porta 5173
+- Dockerfile multi-stage: `node:20-alpine` (build) → `nginx:alpine` (runtime, para uso no Docker Compose local)
+- Script `deploy.sh` para build do bundle, sync para o S3 e invalidação do CloudFront
 
 **Sprint 4 — Docker Compose e integração (raiz do projeto)**
 
-- `docker-compose.yml` na raiz que sobe toda a stack com `docker compose up --build`
-- Serviço `backend` na porta 8080, serviço `frontend` na porta 3000
-- O serviço `frontend` só deve iniciar após o `backend` passar no health check em `GET /actuator/health`
-- O container do frontend deve usar nginx e fazer proxy de `/api/*` para o backend via rede interna Docker (sem passar pelo host)
-- Toda a configuração de Cognito deve vir de um arquivo `.env` na raiz do projeto (não commitado)
-- Incluir `.env.example` com todos os nomes de variáveis, valores placeholder e comentários explicativos
-- Dockerfiles multi-stage:
-  - Backend: stage de build com `eclipse-temurin:21-jdk-alpine`, stage de runtime com `eclipse-temurin:21-jre-alpine`
-  - Frontend: stage de build com `node:20-alpine`, stage de runtime com `nginx:alpine`
-- `README.md` na raiz com:
-  - Seção "Pré-requisitos" com versões mínimas: Node.js 20+, Java 21, Docker 24+, Docker Compose v2, AWS CLI v2, AWS CDK v2
-  - Seção "Quick Start" com passos numerados para clonar, configurar `.env` e rodar `docker compose up --build`
-  - Seção "AWS Deployment" com passos para `npx cdk bootstrap`, `npx cdk deploy` e como copiar os outputs para o `.env`
+- `docker-compose.yml` na raiz que sobe backend (porta 8080) e frontend (porta 3000) com `docker compose up --build`
+- Frontend aguarda o backend passar no health check antes de iniciar
+- Nginx no container do frontend faz proxy de `/api/*` para o backend via rede interna Docker
+- Configuração via arquivo `.env` na raiz
+- `.env.example` documentando todas as variáveis com comentários
+- `README.md` na raiz com: pré-requisitos (Node.js 20+, Java 21, Docker 24+, Docker Compose v2, AWS CLI v2, AWS CDK v2), seção "Quick Start" para rodar localmente, seção "AWS Deployment" com a sequência completa:
+  1. `npx cdk bootstrap && npx cdk deploy` (Sprint 1)
+  2. `./deploy.sh` no backend para push para ECR e redeployment no App Runner (Sprint 2)
+  3. `./deploy.sh` no frontend para sync no S3 e invalidação do CloudFront (Sprint 3)
 
 ---
 
 ### Requisitos gerais
 
-- Cada sprint deve ser executável e testável de forma isolada, sem depender dos outros sprints estarem rodando
-- Cada sprint deve ter seu próprio diretório de spec com `requirements.md` contendo apenas os requisitos daquele sprint e uma seção "Rodando em Isolamento" com os comandos exatos
-- O fluxo de dependência entre sprints é: Sprint 1 gera os outputs do Cognito → Sprint 2 e Sprint 3 consomem esses outputs → Sprint 4 integra tudo
+- Cada sprint deve ser executável e testável de forma isolada
+- Cada sprint deve ter seu próprio diretório de spec com `requirements.md` e uma seção "Rodando em Isolamento"
+- Fluxo de dependência: Sprint 1 gera os outputs → Sprint 2 e 3 consomem → Sprint 4 integra tudo
