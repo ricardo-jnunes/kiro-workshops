@@ -2,26 +2,26 @@
 
 ## Overview
 
-Provisionamento do pipeline de deploy contínuo via AWS CDK. Todo o processo de build de imagem Docker, push para ECR, deploy no App Runner, build do frontend, sync para S3 e invalidação do CloudFront acontece **exclusivamente na AWS** — acionado por push no GitHub via CodeStar Connection. Nenhuma etapa de build ou deploy é executada localmente.
+Continuous deployment pipeline provisioning via AWS CDK. The entire process — Docker image build, ECR push, App Runner deploy, frontend build, S3 sync, and CloudFront invalidation — happens **exclusively in AWS**, triggered by a GitHub push via CodeStar Connection. No build or deploy step is ever run locally.
 
-**Fluxo completo:**
+**Full flow:**
 ```
-Push no GitHub (branch: main)
+Push to GitHub (branch: main)
     ↓
-CodePipeline (fonte: CodeStar Connection → GitHub)
+CodePipeline (source: CodeStar Connection → GitHub)
     ├── Stage: BuildBackend (CodeBuild)
     │     ├── ./gradlew build -x test
     │     ├── docker build -t <ecr-uri>:$CODEBUILD_RESOLVED_SOURCE_VERSION .
     │     ├── docker push <ecr-uri>
-    │     └── aws apprunner start-deployment (se imagem já existia)
+    │     └── aws apprunner start-deployment (if image already existed)
     └── Stage: BuildFrontend (CodeBuild)
           ├── npm ci
-          ├── npm run build (com VITE_* env vars injetadas pelo CodeBuild)
+          ├── npm run build (with VITE_* env vars injected by CodeBuild)
           ├── aws s3 sync dist/ s3://<bucket> --delete
           └── aws cloudfront create-invalidation --paths "/*"
 ```
 
-**Desenvolvimento local (sem Docker):**
+**Local development (no Docker):**
 - Backend: `./gradlew bootRun`
 - Frontend: `npm run dev`
 
@@ -56,7 +56,7 @@ CodePipeline (fonte: CodeStar Connection → GitHub)
 
 ---
 
-## Requirement 12 — Provisionamento do Pipeline via CDK
+## Requirement 12 — Pipeline Provisioning via CDK
 
 **User Story:** As a developer, I want the entire CI/CD pipeline provisioned as code in the CDK stack, so that the pipeline itself is reproducible and version-controlled.
 
@@ -71,77 +71,77 @@ CodePipeline (fonte: CodeStar Connection → GitHub)
 
 ---
 
-## Requirement 13 — Dockerfiles (somente para uso no pipeline)
+## Requirement 13 — Dockerfiles (pipeline use only)
 
 **User Story:** As a developer, I want Dockerfiles for both services that are used exclusively by the CodeBuild pipeline, so that I never need Docker installed locally.
 
 #### Acceptance Criteria
 
-1. THE `backend/Dockerfile` SHALL use a multi-stage build: `eclipse-temurin:21-jdk-alpine` para o stage de build e `eclipse-temurin:21-jre-alpine` para o runtime.
+1. THE `backend/Dockerfile` SHALL use a multi-stage build: `eclipse-temurin:21-jdk-alpine` for the build stage and `eclipse-temurin:21-jre-alpine` for the runtime stage.
 2. THE `backend/Dockerfile` SHALL expect the fat JAR to already exist in `build/libs/` (built by `./gradlew build` in a prior CodeBuild step).
-3. THE `frontend/` directory SHALL NOT require a Dockerfile — o frontend é deploiado como bundle estático diretamente para S3, sem containerização.
+3. THE `frontend/` directory SHALL NOT require a Dockerfile — the frontend is deployed as a static bundle directly to S3, without containerization.
 4. WHEN `backend/Dockerfile` is present in the repository THEN it SHALL be executable by the CodeBuild pipeline without any local pre-requisites.
 
 ---
 
-## Requirement 14 — Configuração e Documentação
+## Requirement 14 — Configuration and Documentation
 
 **User Story:** As a developer, I want a `.env.example` and root-level README that document the no-Docker-local development workflow clearly.
 
 #### Acceptance Criteria
 
 1. WHEN the project is cloned THEN the system SHALL include a `.env.example` at the root listing all environment variable keys with placeholder values and comments.
-2. WHEN the project root `README.md` is read THEN the system SHALL include a "Desenvolvimento Local" section as the primary workflow — sem Docker:
+2. WHEN the project root `README.md` is read THEN the system SHALL include a "Local Development" section as the primary workflow — no Docker:
    - Terminal 1: `cd backend && ./gradlew bootRun`
    - Terminal 2: `cd frontend && npm run dev`
-3. WHEN the project root `README.md` is read THEN the system SHALL include a "Deploy" section describing that deploy happens automatically on push to `main` via CodePipeline — sem nenhum comando manual.
+3. WHEN the project root `README.md` is read THEN the system SHALL include a "Deploy" section describing that deploy happens automatically on push to `main` via CodePipeline — no manual commands required.
 4. WHEN the project root `README.md` is read THEN the system SHALL list Docker as a **non-requirement** for local development, clearly stating it is used only by the CodeBuild pipeline in AWS.
 5. WHEN the project root `README.md` is read THEN the system SHALL document the one-time manual step required after `cdk deploy`: activating the CodeStar Connection in the AWS console.
 
 ---
 
-## Desenvolvimento Local (Sem Docker)
+## Local Development (No Docker)
 
 ```bash
-# Requer: Sprint 1 executado e outputs do CDK disponíveis
+# Requires: Sprint 1 executed and CDK outputs available
 
 # Terminal 1 — Backend
 cd backend
 export COGNITO_ISSUER_URI=https://cognito-idp.<region>.amazonaws.com/<UserPoolId>
 export CORS_ALLOWED_ORIGINS=http://localhost:5173
 ./gradlew bootRun
-# Disponível em: http://localhost:8080
+# Available at: http://localhost:8080
 
 # Terminal 2 — Frontend
 cd frontend
-# Criar .env.local:
+# Create .env.local:
 # VITE_COGNITO_USER_POOL_ID=<UserPoolId>
 # VITE_COGNITO_CLIENT_ID=<UserPoolClientId>
 # VITE_COGNITO_DOMAIN=<CognitoDomain>
 # VITE_API_BASE_URL=http://localhost:8080
 npm run dev
-# Disponível em: http://localhost:5173
+# Available at: http://localhost:5173
 ```
 
-## Deploy (automático via push no GitHub)
+## Deploy (automatic via GitHub push)
 
 ```bash
 git add .
-git commit -m "feat: minha mudança"
+git commit -m "feat: my change"
 git push origin main
-# CodePipeline é acionado automaticamente
-# Acompanhar em: https://console.aws.amazon.com/codesuite/codepipeline
+# CodePipeline is triggered automatically
+# Monitor at: https://console.aws.amazon.com/codesuite/codepipeline
 ```
 
-## Setup Inicial da Infraestrutura
+## Initial Infrastructure Setup
 
 ```bash
-# 1. Provisionar toda a infraestrutura + pipeline (Sprint 1)
+# 1. Provision all infrastructure + pipeline (Sprint 1)
 cd infra && npx cdk bootstrap && npx cdk deploy
 
-# 2. Ativar a CodeStar Connection no console AWS (passo manual único)
-# Console → Developer Tools → Connections → selecionar a conexão → "Update pending connection"
+# 2. Activate the CodeStar Connection in the AWS console (one-time manual step)
+# Console → Developer Tools → Connections → select the connection → "Update pending connection"
 
-# 3. Fazer o primeiro push para acionar o pipeline
+# 3. Make the first push to trigger the pipeline
 git push origin main
 ```

@@ -56,23 +56,23 @@ Deploy is fully automated — push to `main` triggers CodePipeline.
 ## Sprint Dependencies
 
 ```
-Sprint 0 (Checklist) → ambiente pronto, região + pacote Java decididos
+Sprint 0 (Checklist) → environment ready, region + Java package decided
     ↓
-Sprint 1 (IaC) → provisiona tudo: Cognito, ECR, App Runner, S3, CloudFront, CodePipeline
+Sprint 1 (IaC) → provisions everything: Cognito, ECR, App Runner, S3, CloudFront, CodePipeline
     ↓
-Sprint 2 (Backend) — `./gradlew bootRun` local; pipeline faz o deploy
-Sprint 3 (Frontend) — `npm run dev` local; pipeline faz o deploy
+Sprint 2 (Backend) — `./gradlew bootRun` locally; pipeline handles deploy
+Sprint 3 (Frontend) — `npm run dev` locally; pipeline handles deploy
     ↓
-Sprint 4 (Pipeline) — CodePipeline + CodeBuild provisionados no CDK (Sprint 1)
-                       push no GitHub → build → deploy automático
+Sprint 4 (Pipeline) — CodePipeline + CodeBuild provisioned via CDK (Sprint 1)
+                       push to GitHub → build → automatic deploy
 ```
 
 ## Architecture Notes
 
-- **Backend** segue arquitetura hexagonal. `./gradlew bootRun` para dev local. Docker é usado apenas pelo CodeBuild.
-- **Frontend** CSS Modules, Amplify v6, sem biblioteca de UI. `npm run dev` para dev local. Sem Dockerfile — deploy direto para S3.
-- **Pipeline** CodePipeline acionado por push no GitHub via CodeStar Connection. Dois stages paralelos: backend (Docker + ECR + App Runner) e frontend (npm build + S3 + CloudFront).
-- **IaC** um único `npx cdk deploy` provisiona toda a infraestrutura + pipeline.
+- **Backend** follows hexagonal architecture. `./gradlew bootRun` for local dev. Docker is used only by CodeBuild.
+- **Frontend** CSS Modules, Amplify v6, no UI library. `npm run dev` for local dev. No Dockerfile — deployed directly to S3.
+- **Pipeline** CodePipeline triggered by GitHub push via CodeStar Connection. Two parallel stages: backend (Docker + ECR + App Runner) and frontend (npm build + S3 + CloudFront).
+- **IaC** a single `npx cdk deploy` provisions all infrastructure + pipeline.
 
 ## Feature name
 
