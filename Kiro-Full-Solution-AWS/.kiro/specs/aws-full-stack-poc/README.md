@@ -4,6 +4,7 @@ POC template for modern AWS full-stack projects. Organized in 4 independent spri
 
 | Sprint | Directory | Description |
 |--------|-----------|-------------|
+| Sprint 0 | [sprint-0-checklist/](./sprint-0-checklist/checklist.md) | Environment setup — local tools + AWS account readiness |
 | Sprint 1 | [sprint-1-iac/](./sprint-1-iac/requirements.md) | AWS CDK — Cognito, ECR, App Runner, S3, CloudFront |
 | Sprint 2 | [sprint-2-backend/](./sprint-2-backend/requirements.md) | Java 21 / Spring Boot 3.x — hexagonal architecture → App Runner |
 | Sprint 3 | [sprint-3-frontend/](./sprint-3-frontend/requirements.md) | React + Vite + TypeScript → S3 + CloudFront |
@@ -41,6 +42,8 @@ POC template for modern AWS full-stack projects. Organized in 4 independent spri
 ## Sprint Dependencies
 
 ```
+Sprint 0 (Checklist) → environment ready, region + package name decided
+    ↓
 Sprint 1 (IaC) → outputs: UserPoolId, UserPoolClientId, CognitoDomain, BackendUrl, FrontendUrl, FrontendBucketName
     ↓
 Sprint 2 (Backend) — needs COGNITO_ISSUER_URI, CORS_ALLOWED_ORIGINS (= FrontendUrl)
