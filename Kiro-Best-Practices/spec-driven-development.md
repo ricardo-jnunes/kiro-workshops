@@ -42,10 +42,37 @@ O Spec-Driven Development segue um pipeline de três documentos:
 
 Define **o que** precisa ser construído. Contém:
 - User Stories no formato "Como [papel], eu quero [ação], para que [benefício]"
-- Critérios de aceitação mensuráveis e testáveis
+- Critérios de aceitação mensuráveis e testáveis usando notação EARS
 - Propriedades de corretude (correctness properties) que o sistema deve satisfazer
 
 O Kiro analisa ambiguidades automaticamente e faz perguntas de clarificação antes de prosseguir.
+
+#### Requirements com Notação EARS
+
+O arquivo `requirements.md` usa a notação **EARS** (Easy Approach to Requirements Syntax) para produzir requisitos estruturados, não-ambíguos e testáveis. Cada critério de aceitação segue um dos padrões abaixo:
+
+| Padrão | Estrutura | Quando usar |
+|--------|-----------|-------------|
+| **Event-driven** | `WHEN [evento], THE System SHALL [resposta]` | Reação a um evento específico |
+| **Conditional** | `IF [condição], THEN THE System SHALL [resposta]` | Comportamento sob uma condição |
+| **State-driven** | `WHILE [estado], THE System SHALL [comportamento]` | Comportamento contínuo durante um estado |
+| **Unconditional** | `THE System SHALL [comportamento]` | Requisito sempre ativo |
+| **Complex** | `WHERE [contexto], WHEN [evento], THE System SHALL [resposta]` | Contexto + evento combinados |
+
+**Regras de formatação:**
+- Sempre usar vírgula após a cláusula WHEN/IF/WHILE, antes de THE System
+- Usar "THE System SHALL" (capitalizado) de forma consistente
+- Cada critério deve ser testável independentemente
+- Usar "SHALL" para obrigações, "SHALL NOT" para proibições
+
+**Exemplo:**
+```markdown
+#### Acceptance Criteria
+
+1. WHEN the user submits valid credentials, THE System SHALL authenticate via Cognito and redirect to `/`.
+2. IF the API call fails, THEN THE System SHALL display a friendly error message without crashing.
+3. THE System SHALL complete authentication within 3 seconds.
+```
 
 ### 2. Design (design.md)
 
