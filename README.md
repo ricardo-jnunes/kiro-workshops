@@ -8,9 +8,27 @@ Repositório com prompts e material de estudo para uso do **Kiro IDE** — AI-po
 
 | Workshop | Descrição |
 |---|---|
+| [Kiro Best Practices](#kiro-best-practices) | Guia de referência com boas práticas para uso do Kiro IDE |
 | [Kiro Kanban](#kiro-kanban-workshop) | SPA Angular com Kanban board seguindo Spec-Driven Development iterativo |
 | [Kiro MCP ViaCEP](#kiro-mcp-viacep-workshop) | Servidor MCP para consulta de CEPs brasileiros via API ViaCEP |
 | [Kiro Full Solution AWS](#kiro-full-solution-aws-workshop) | POC full-stack moderna: React + Java Spring Boot + AWS Cognito + CDK, organizada em sprints |
+
+---
+
+## Kiro Best Practices
+
+Guia de referência com documentação sobre as melhores práticas, conceitos e funcionalidades do Kiro IDE.
+
+📁 [Kiro-Best-Practices/](./Kiro-Best-Practices/README.md)
+
+| Documento | Tópico |
+|---|---|
+| [spec-driven-development.md](./Kiro-Best-Practices/spec-driven-development.md) | Spec-Driven Development: fluxo Requirements → Design → Tasks |
+| [vibe-coding.md](./Kiro-Best-Practices/vibe-coding.md) | Vibe Coding: modo conversacional para prototipagem rápida |
+| [kiro-structure.md](./Kiro-Best-Practices/kiro-structure.md) | Formato dos specs: estrutura obrigatória de requirements, design e tasks |
+| [agent-steering.md](./Kiro-Best-Practices/agent-steering.md) | Steering Files: como configurar o comportamento do agente |
+| [agent-hooks.md](./Kiro-Best-Practices/agent-hooks.md) | Agent Hooks: automações baseadas em eventos do IDE |
+| [kiro-powers.md](./Kiro-Best-Practices/kiro-powers.md) | Kiro Powers: extensões de capacidades com MCP servers |
 
 ---
 
@@ -53,21 +71,22 @@ POC completa e funcional servindo como **template de fast first step** para proj
 📁 [Kiro-Full-Solution-AWS/](./Kiro-Full-Solution-AWS/)  
 📋 [Spec](./Kiro-Full-Solution-AWS/.kiro/specs/aws-full-stack-poc/README.md) · [Checklist de Ambiente](./Kiro-Full-Solution-AWS/.kiro/specs/aws-full-stack-poc/sprint-0-checklist/checklist.md) · [Prompt de Retomada](./Kiro-Full-Solution-AWS/.kiro/specs/aws-full-stack-poc/prompt.md)
 
-**Stack:** React + Vite · Java 21 + Spring Boot 3.x · AWS Cognito · AWS CDK · App Runner · S3 + CloudFront · Docker Compose
+**Stack:** React + Vite · Java 21 + Spring Boot 3.x · AWS Cognito · AWS CDK · App Runner · S3 + CloudFront · CodePipeline + CodeBuild
 
 **Arquitetura:**
 - Frontend React (Vite + TypeScript, CSS Modules, Amplify v6) → **AWS S3 + CloudFront**
 - Backend Java Spring Boot (arquitetura hexagonal, JWT via Cognito) → **AWS App Runner** (via ECR)
 - Autenticação e autorização → **AWS Cognito** (User Pool provisionado via CDK)
-- Desenvolvimento local → **Docker Compose** (backend + frontend em containers)
+- CI/CD → **AWS CodePipeline + CodeBuild** (push to `main` → deploy automático)
+- Desenvolvimento local → `./gradlew bootRun` + `npm run dev` (sem Docker)
 
 | Sprint | Descrição | Status |
 |--------|-----------|--------|
 | Sprint 0 | Checklist de ambiente local e conta AWS | ✅ spec |
-| Sprint 1 | IaC: CDK — Cognito, ECR, App Runner, S3, CloudFront | ✅ spec |
-| Sprint 2 | Backend Java — arquitetura hexagonal + deploy App Runner | ✅ spec |
-| Sprint 3 | Frontend React — login, home protegida + deploy S3/CloudFront | ✅ spec |
-| Sprint 4 | Docker Compose local + pipeline de deploy end-to-end | ✅ spec |
+| Sprint 1 | IaC: CDK — Cognito, ECR, App Runner, S3, CloudFront, CodePipeline | ✅ spec |
+| Sprint 2 | Backend Java — arquitetura hexagonal, JWT, health check | ✅ spec |
+| Sprint 3 | Frontend React — login, home protegida, CSS Modules | ✅ spec |
+| Sprint 4 | Pipeline CI/CD — CodeBuild + ECR + S3 sync + CloudFront invalidation | ✅ spec |
 
 ---
 
