@@ -1,0 +1,1 @@
+# Kiro Spec Format
