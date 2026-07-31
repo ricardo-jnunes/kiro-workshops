@@ -96,7 +96,7 @@ O ViaCEP Brasil MCP Server pode ser executado de várias formas, dependendo das 
 
 ### Pré-requisitos
 
-- Node.js v18+ (para execução direta)
+- Node.js v20+ (para execução direta)
 - Docker (para execução via contêiner)
 
 ### Instalação via NPX

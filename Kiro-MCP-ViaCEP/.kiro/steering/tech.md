@@ -2,7 +2,7 @@
 
 ## Tecnologias Principais
 
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 20+
 - **Linguagem**: TypeScript 5+
 - **Protocolo**: MCP SDK (`@modelcontextprotocol/sdk`)
 - **Validação**: Zod

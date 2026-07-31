@@ -37,7 +37,7 @@ Workshop demonstrando como construir um **servidor MCP (Model Context Protocol)*
 
 📁 [Kiro-MCP-ViaCEP/](./Kiro-MCP-ViaCEP/README.md)
 
-**Stack:** Node.js 18+ · TypeScript · MCP SDK · Docker
+**Stack:** Node.js 20+ · TypeScript · MCP SDK · Docker
 
 | Ferramenta | Descrição |
 |---|---|
